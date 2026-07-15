@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #EDE7D9;
+  --color-paper-deep: #E2DAC8;
+  --color-ink: #2B2620;
+  --color-pine: #33453A;
+  --color-pine-deep: #22302A;
+  --color-rose: #B5566E;
+  --color-rose-soft: #E7CBD2;
+  --color-gold: #AD8A4E;
+  --color-gold-soft: #EBDDBB;
+  --color-line: #C9BFA8;
+  --color-card: #F7F3E9;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+/* visible keyboard focus for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-pine);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
