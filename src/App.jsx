@@ -7,24 +7,26 @@ import WaterPage from "./pages/Water.jsx";
 import MovePage from "./pages/Move.jsx";
 import TasksPage from "./pages/Tasks.jsx";
 import CyclePage from "./pages/Cycle.jsx";
-import HomeCarePage from "./pages/HomeCare.jsx";
 import ProfilePage from "./pages/Profile.jsx";
 import { todayKey } from "./lib/dates.js";
 import {
   watchUserData, setUserData, watchDailyLog, setDailyLog,
 } from "./lib/dataStore.js";
+import { startWaterReminderSchedule } from "./lib/notifications.js";
 
 const DEFAULT_PROFILE = {
   name: "", age: "", heightCm: "", weightKg: "", gender: "female",
   autoGoals: true, waterGoalMl: 2000, stepGoal: 8000,
 };
 const DEFAULT_HOMECARE = {
-  pillow: { label: "Pillow covers", freqDays: 7, lastDone: null, icon: "pillow" },
-  bedsheet: { label: "Bedsheets", freqDays: 14, lastDone: null, icon: "bed" },
-  brush: { label: "Toothbrush", freqDays: 90, lastDone: null, icon: "brush" },
+  pillow: { label: "Pillow covers", scheduleType: "weekday", weekday: 0, lastDone: null, icon: "pillow" },
+  bedsheet: { label: "Bedsheets", scheduleType: "monthAnchor", anchorType: "lastWeekday", weekday: 0, everyNMonths: 1, lastDone: null, icon: "bed" },
+  brush: { label: "Toothbrush", scheduleType: "monthAnchor", anchorType: "lastDay", everyNMonths: 3, lastDone: null, icon: "brush" },
 };
-const DEFAULT_PERIOD = { logs: [] };
-const DEFAULT_DAILY = { water: 0, steps: 0, gym: false, tasks: [] };
+const DEFAULT_PERIOD = { periods: [] };
+const DEFAULT_DAILY = { water: 0, steps: 0, gym: false, tasks: [], skincare: {} };
+const DEFAULT_SKINCARE = [];
+const DEFAULT_WEEKLY_PLANNER = {};
 
 export default function App() {
   const { user, checking, logout } = useAuth();
@@ -34,6 +36,8 @@ export default function App() {
   const [homecare, setHomecare] = useState(DEFAULT_HOMECARE);
   const [periodData, setPeriodData] = useState(DEFAULT_PERIOD);
   const [dailyLog, setDailyLogState] = useState(DEFAULT_DAILY);
+  const [skincareTasks, setSkincareTasks] = useState(DEFAULT_SKINCARE);
+  const [weeklyPlanner, setWeeklyPlanner] = useState(DEFAULT_WEEKLY_PLANNER);
   const key = todayKey();
 
   useEffect(() => {
@@ -47,6 +51,8 @@ export default function App() {
         setProfile({ ...DEFAULT_PROFILE, ...(data.profile || {}) });
         setHomecare({ ...DEFAULT_HOMECARE, ...(data.homecare || {}) });
         setPeriodData({ ...DEFAULT_PERIOD, ...(data.periodData || {}) });
+        setSkincareTasks(data.skincareTasks || DEFAULT_SKINCARE);
+        setWeeklyPlanner(data.weeklyPlanner || DEFAULT_WEEKLY_PLANNER);
       }
       gotUserDoc = true;
       check();
@@ -75,9 +81,37 @@ export default function App() {
     if (user) setUserData(user.uid, { periodData: next });
   }, [user]);
 
+  const saveSkincareTasks = useCallback((next) => {
+    setSkincareTasks(next);
+    if (user) setUserData(user.uid, { skincareTasks: next });
+  }, [user]);
+
+  const saveWeeklyPlanner = useCallback((next) => {
+    setWeeklyPlanner(next);
+    if (user) setUserData(user.uid, { weeklyPlanner: next });
+  }, [user]);
+
   const saveDailyLog = useCallback((next) => {
     setDailyLogState(next);
     if (user) setDailyLog(user.uid, key, next);
+  }, [user, key]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let stopReminders = startWaterReminderSchedule();
+    const restartReminders = () => { stopReminders(); stopReminders = startWaterReminderSchedule(); };
+    const handleMessage = (event) => {
+      if (event.data?.type === "WATER_REMINDER_ACCEPTED") {
+        setDailyLogState((current) => {
+          const next = { ...current, water: (current.water || 0) + (event.data.amount || 200) };
+          setDailyLog(user.uid, key, next);
+          return next;
+        });
+      }
+    };
+    window.addEventListener("daybook-water-reminders-enabled", restartReminders);
+    navigator.serviceWorker?.addEventListener("message", handleMessage);
+    return () => { stopReminders(); window.removeEventListener("daybook-water-reminders-enabled", restartReminders); navigator.serviceWorker?.removeEventListener("message", handleMessage); };
   }, [user, key]);
 
   if (checking) {
@@ -103,6 +137,7 @@ export default function App() {
   const pageProps = {
     profile, saveProfile, homecare, saveHomecare,
     periodData, savePeriodData, dailyLog, saveDailyLog,
+    skincareTasks, saveSkincareTasks, weeklyPlanner, saveWeeklyPlanner, uid: user.uid,
     setTab, displayName,
   };
 
@@ -118,14 +153,13 @@ export default function App() {
           </button>
         </div>
       </div>
-      <TopNav tab={tab} setTab={setTab} />
+      <TopNav tab={tab} setTab={setTab} profile={profile} />
       <div className="max-w-2xl mx-auto px-4 pb-10">
         {tab === "home" && <HomePage {...pageProps} />}
         {tab === "water" && <WaterPage {...pageProps} />}
         {tab === "move" && <MovePage {...pageProps} />}
         {tab === "tasks" && <TasksPage {...pageProps} />}
-        {tab === "cycle" && <CyclePage {...pageProps} />}
-        {tab === "homecare" && <HomeCarePage {...pageProps} />}
+        {tab === "cycle" && profile.gender !== "male" && <CyclePage {...pageProps} />}
         {tab === "profile" && <ProfilePage {...pageProps} />}
         <p className="text-center text-xs mt-6 text-pine/50">
           Signed in as {user.email} — synced to your account.

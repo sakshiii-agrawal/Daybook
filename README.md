@@ -84,3 +84,24 @@ native app, with no browser bar.
 - The word/fact of the day rotates automatically based on the date and
   needs no internet API — it's a built-in list in `src/lib/content.js`,
   which you can freely edit or extend.
+
+## Water notification setup
+
+Water reminders use the included service worker (`public/water-reminder-sw.js`). No Firebase Cloud Messaging key is required for the included in-app reminder flow.
+
+1. Deploy over HTTPS (Vercel does this automatically). Service workers and notifications work on localhost but not a normal HTTP site.
+2. Open **Water**, select **Enable water reminders**, and accept the browser permission prompt.
+3. Daybook reminds you every 90 minutes while the app is open. The notification has **Yes, add 200 ml** and **No** actions. Yes updates today's water total in the open Daybook tab.
+
+This is water-only. A true scheduled notification when every browser tab is closed needs a trusted server, such as Firebase Cloud Functions plus Firebase Cloud Messaging, because that server must securely send the notification and write the selected 200 ml for the signed-in user. The included free client-side version works while Daybook is open.
+
+## Google Fit setup
+
+Google Fit is optional; the manual step field always remains available.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), select the Firebase project's Google Cloud project.
+2. Go to **APIs & Services → Library**, search for **Fitness API**, and enable it.
+3. In **APIs & Services → OAuth consent screen**, configure the app details and add your Google account as a test user while it is in Testing.
+4. In **Credentials**, create an OAuth client ID of type **Web application**. Add `http://localhost:5173` and your deployed Vercel URL to **Authorized JavaScript origins**.
+5. Copy its client ID into `VITE_GOOGLE_CLIENT_ID` locally and into Vercel's environment variables, then redeploy.
+6. Open **Move** and choose **Connect Google Fit**. Approve the read-only activity permission; Daybook imports today's step total. Use **Refresh from Google Fit** to pull the latest total.
