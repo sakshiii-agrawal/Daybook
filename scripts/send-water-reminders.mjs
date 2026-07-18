@@ -80,7 +80,7 @@ async function main() {
       await messaging.send({
         token: profile.fcmToken,
         data: { type: "water-reminder", amount: "200" },
-        webpush: { fcmOptions: { link: "/" } },
+        webpush: { fcmOptions: { link: "https://daybook-7loyn21vh-saka4.vercel.app/" } },
       });
 
       await db.collection("users").doc(uid).set(
