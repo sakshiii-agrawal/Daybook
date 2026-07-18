@@ -6,7 +6,7 @@
 import admin from "firebase-admin";
 
 const REMINDER_INTERVAL_MS = 90 * 60 * 1000;
-const ACTIVE_HOURS = { start: 8, end: 22 };
+const ACTIVE_HOURS = { start: 0, end: 24 };
 const BEHIND_BUFFER_ML = 200;
 const DEFAULT_WATER_GOAL_ML = 2000;
 
