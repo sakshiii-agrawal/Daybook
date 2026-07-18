@@ -17,6 +17,7 @@ import { startWaterReminderSchedule } from "./lib/notifications.js";
 const DEFAULT_PROFILE = {
   name: "", age: "", heightCm: "", weightKg: "", gender: "female",
   autoGoals: true, waterGoalMl: 2000, stepGoal: 8000,
+  notifyClosedApp: false, fcmToken: null, tzOffsetMinutes: null,
 };
 const DEFAULT_HOMECARE = {
   pillow: { label: "Pillow covers", scheduleType: "weekday", weekday: 0, lastDone: null, icon: "pillow" },
@@ -95,6 +96,25 @@ export default function App() {
     setDailyLogState(next);
     if (user) setDailyLog(user.uid, key, next);
   }, [user, key]);
+
+  // If Daybook was fully closed and got opened via the "Yes, add 200ml"
+  // action on a closed-app push notification, the service worker encodes
+  // that as ?water=<amount> on the opened URL — apply it once, then clean
+  // the URL so a refresh doesn't double-log it.
+  useEffect(() => {
+    if (!user || loadingData) return;
+    const params = new URLSearchParams(window.location.search);
+    const amount = parseInt(params.get("water"), 10);
+    if (!amount) return;
+    setDailyLogState((current) => {
+      const next = { ...current, water: (current.water || 0) + amount };
+      setDailyLog(user.uid, key, next);
+      return next;
+    });
+    params.delete("water");
+    const cleanUrl = window.location.pathname + (params.toString() ? `?${params}` : "");
+    window.history.replaceState({}, "", cleanUrl);
+  }, [user, loadingData, key]);
 
   useEffect(() => {
     if (!user) return undefined;

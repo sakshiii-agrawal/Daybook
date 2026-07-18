@@ -3,7 +3,7 @@ import { Droplets, Plus, Bell } from "lucide-react";
 import Section from "../components/Section.jsx";
 import ProgressBar from "../components/ProgressBar.jsx";
 import { getGoals } from "../lib/health.js";
-import { enableWaterReminders, waterRemindersEnabled } from "../lib/notifications.js";
+import { enableWaterReminders, waterRemindersEnabled, enableClosedAppReminders } from "../lib/notifications.js";
 
 // Simple pace model: expects even progress toward the goal between 8am and 10pm.
 function expectedByNow(goalMl) {
@@ -14,7 +14,7 @@ function expectedByNow(goalMl) {
   return Math.round(pct * goalMl);
 }
 
-export default function WaterPage({ profile, dailyLog, saveDailyLog }) {
+export default function WaterPage({ profile, dailyLog, saveDailyLog, uid }) {
   const goals = useMemo(() => getGoals(profile), [profile]);
   const expected = useMemo(() => expectedByNow(goals.waterGoalMl), [goals.waterGoalMl]);
   const behind = dailyLog.water < expected - 200; // small buffer so it doesn't nag over tiny gaps
@@ -28,6 +28,13 @@ export default function WaterPage({ profile, dailyLog, saveDailyLog }) {
   const enableReminders = async () => {
     try { await enableWaterReminders(); setReminderState("enabled"); }
     catch (error) { setReminderState(error.message); }
+  };
+
+  const [closedAppState, setClosedAppState] = useState(profile.notifyClosedApp ? "enabled" : "idle");
+  const enableClosedApp = async () => {
+    setClosedAppState("connecting");
+    try { await enableClosedAppReminders(uid); setClosedAppState("enabled"); }
+    catch (error) { setClosedAppState(error.message); }
   };
 
   return (
@@ -70,6 +77,22 @@ export default function WaterPage({ profile, dailyLog, saveDailyLog }) {
           {reminderState === "enabled" ? "Water reminders enabled" : "Enable water reminders"}
         </button>
         {reminderState !== "idle" && reminderState !== "enabled" && <p className="text-xs text-rose mt-2">{reminderState}</p>}
+      </div>
+      <div className="mt-4 pt-4 border-t border-line">
+        <p className="text-sm font-medium">Even when Daybook is closed</p>
+        <p className="text-xs opacity-60 mt-1">
+          Real push notifications, sent for free by a scheduled check outside the app — works even if you haven't opened Daybook today.
+        </p>
+        <button
+          onClick={enableClosedApp}
+          disabled={closedAppState === "enabled" || closedAppState === "connecting"}
+          className="mt-3 px-3 py-1.5 rounded-lg text-sm border border-pine text-pine-deep disabled:opacity-60"
+        >
+          {closedAppState === "enabled" ? "Closed-app reminders enabled" : closedAppState === "connecting" ? "Connecting…" : "Enable closed-app reminders"}
+        </button>
+        {closedAppState !== "idle" && closedAppState !== "enabled" && closedAppState !== "connecting" && (
+          <p className="text-xs text-rose mt-2">{closedAppState}</p>
+        )}
       </div>
     </Section>
   );
